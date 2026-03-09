@@ -260,11 +260,29 @@ function App() {
       for (let i = 0; i < batchSize && !targetAchieved && !stopSignalRef.current; i++) {
         const { newState } = performSingleRoll(currentSimulatedState, currentSimulatedState.activeTab);
         currentSimulatedState = newState;
-        currentIterations++;
+        
+        // 1. Check for newly achieved target BEFORE locking
         currentSimulatedTab = currentSimulatedState.tabs.find(tab => tab.name === currentSimulatedState.activeTab);
         if (currentSimulatedTab) {
-          targetAchieved = currentSimulatedTab.slots.some(slot => slot.target !== null && checkTargetAchieved(slot));
+          targetAchieved = currentSimulatedTab.slots.some(slot => 
+            slot.target !== null && !slot.isLocked && checkTargetAchieved(slot)
+          );
         }
+
+        // 2. Then, lock the newly achieved targets
+        currentSimulatedState.tabs = currentSimulatedState.tabs.map(tab => {
+          if (tab.name === currentSimulatedState.activeTab) {
+            const updatedSlots = tab.slots.map(slot => 
+              (slot.target && !slot.isLocked && checkTargetAchieved(slot)) 
+                ? { ...slot, isLocked: true } 
+                : slot
+            );
+            return { ...tab, slots: updatedSlots };
+          }
+          return tab;
+        });
+
+        currentIterations++;
       }
       if (isAnimationOn) {
         setSimulationCount(currentIterations);

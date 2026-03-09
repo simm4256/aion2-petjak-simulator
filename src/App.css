@@ -1,3 +1,26 @@
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+  user-select: none; /* 텍스트 선택 방지 */
+  cursor: default;   /* 기본 커서 설정 */
+}
+
+/* 입력창, 선택창, 버튼 등 상호작용 요소는 제외 */
+input, select, textarea, button {
+  user-select: auto;
+}
+
+input[type="text"], input[type="number"], textarea {
+  cursor: text; /* 텍스트 입력창은 I-beam 커서 유지 */
+}
+
+button, select, input[type="range"], .lock-icon, .option-display, .target-display {
+  cursor: pointer; /* 클릭 가능한 요소는 포인터 커서 유지 */
+}
+
 #root {
   max-width: 1280px;
   margin: 0 auto;

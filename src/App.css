@@ -1,0 +1,469 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.App {
+  font-family: Arial, sans-serif;
+  color: #f0f0f0;
+  background-color: #282c34;
+  min-height: 100vh;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+h1, h2 {
+  color: #61dafb;
+}
+
+.tab-buttons {
+  margin-bottom: 20px;
+}
+
+.tab-buttons button {
+  background-color: #444;
+  color: #f0f0f0;
+  border: 1px solid #61dafb;
+  padding: 10px 20px;
+  margin: 0 5px;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.tab-buttons button:hover:not(.active) {
+  background-color: #555;
+}
+
+.tab-buttons button.active {
+  background-color: #61dafb;
+  color: #282c34;
+  font-weight: bold;
+}
+
+.settings-button {
+  background-color: #444;
+  color: #f0f0f0;
+  border: 1px solid #aaa !important;
+  padding: 10px 15px !important;
+  margin-left: 20px !important;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background-color 0.3s;
+}
+
+.settings-button:hover {
+  background-color: #666;
+}
+
+.settings-modal {
+  width: 400px !important;
+  text-align: left !important;
+}
+
+.settings-modal h3 {
+  text-align: center;
+}
+
+.settings-section {
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: #444;
+  border-radius: 8px;
+}
+
+.settings-section h4 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #555;
+  padding-bottom: 5px;
+  color: #61dafb;
+}
+
+.settings-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.settings-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-grow: 1;
+  justify-content: flex-end;
+}
+
+.toggle-button {
+  padding: 8px 15px !important;
+  border: none !important;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  min-width: 60px;
+  transition: background-color 0.3s;
+}
+
+.toggle-button.on {
+  background-color: #19e048;
+  color: #282c34;
+}
+
+.toggle-button.off {
+  background-color: #e03c00;
+  color: white;
+}
+
+.slider-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 120px; /* 슬라이더 전체 너비 고정 */
+}
+
+.slider-container.hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.slider-label {
+  font-size: 0.7em;
+  color: #aaa;
+}
+
+input[type="range"] {
+  cursor: pointer;
+  width: 100px;
+}
+
+.gacha-area {
+  background-color: #333;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #444;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.main-content-area {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  justify-content: center;
+}
+
+.slots-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 400px; /* Increased from 300px to 400px */
+  padding: 10px;
+  border: 1px solid #555;
+  border-radius: 8px;
+}
+
+.slot-item {
+  background-color: #444;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid #555;
+  display: flex;
+  align-items: center;
+  min-height: 45px; /* Slightly increased for better spacing */
+  cursor: default;
+}
+
+.slot-item.locked {
+  border-color: #ffcc00;
+  box-shadow: 0 0 8px rgba(255, 204, 0, 0.5);
+}
+
+.slot-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 10px; /* Add gap between elements */
+}
+
+.option-display {
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  flex-basis: 0; /* Distribute space evenly */
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 5px;
+  min-width: 150px; /* Increased from 100px */
+}
+
+.option-display:hover {
+  background-color: #555;
+}
+
+.option-display p {
+  margin: 0;
+  font-size: 0.9em;
+  font-weight: bold;
+  white-space: nowrap; /* Prevent text wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis; /* Add ellipsis if still too long */
+}
+
+.target-display {
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  flex-basis: 0; /* Distribute space evenly */
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 5px;
+  min-width: 150px; /* Increased from 100px */
+}
+
+.target-display:hover {
+  background-color: #555;
+}
+
+.target-display .target-text {
+  margin: 0;
+  font-size: 0.75em;
+  color: #aaa;
+  white-space: nowrap; /* Prevent text wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis; /* Add ellipsis if still too long */
+}
+
+.lock-icon {
+  cursor: pointer;
+  font-size: 1.2em;
+  margin-left: 10px;
+  display: flex; /* To center the image */
+  align-items: center;
+}
+
+.lock-icon.locked-color {
+  color: white;
+}
+
+.lock-icon.unlocked-color {
+  color: #808080; /* Gray for unlocked */
+}
+
+.lock-image {
+  width: 30px;
+  height: 30px;
+  vertical-align: middle; /* Align image vertically in the middle */
+}
+
+.gacha-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  justify-content: center;
+  align-items: center;
+  width: 200px;
+}
+
+.gacha-controls button {
+  background-color: #7a640f;
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 8px;
+  font-size: 1.1em;
+  cursor: pointer;
+  width: 100%;
+  transition: background-color 0.3s;
+}
+
+.gacha-controls button:hover {
+  background-color: #e03c00;
+}
+
+.gacha-controls button:disabled {
+  background-color: #666;
+  cursor: not-allowed;
+}
+
+.costs-summary {
+  background-color: #333;
+  padding: 15px; /* Slightly reduced padding */
+  border-radius: 10px;
+  border: 1px solid #444;
+  margin-top: 20px;
+}
+
+.costs-summary h2 {
+  font-size: 1.1em; /* Reduced from default h2 size */
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #61dafb;
+}
+
+.costs-summary p {
+  font-size: 0.9em; /* Reduced from 1.1em */
+  margin: 3px 0; /* Tighter vertical spacing */
+}
+
+/* Grade-specific colors */
+.option-display.grade-영웅 p,
+.target-display.grade-영웅 .target-text,
+.grade-영웅 { color: #ff6c00 !important; } /* Orange */
+
+.option-display.grade-유일 p,
+.target-display.grade-유일 .target-text,
+.grade-유일 { color: #ffd02b !important; } /* Yellow */
+
+.option-display.grade-전승 p,
+.target-display.grade-전승 .target-text,
+.grade-전승 { color: #379aff !important; } /* Blue */
+
+.option-display.grade-희귀 p,
+.target-display.grade-희귀 .target-text,
+.grade-희귀 { color: #19e048 !important; } /* Green */
+
+.grade-일반 { color: #c3c3c3 !important; }
+.grade-default { color: #ffffff !important; }
+
+select:not([class*="grade-"]) {
+  color: #f0f0f0 !important;
+}
+
+.cost-text {
+  font-size: 0.8em; /* Slightly increased for better visibility on same line */
+  margin-left: 5px;
+  display: inline;
+}
+
+.cost-image {
+  width: 20px;
+  height: 20px;
+  vertical-align: middle; /* Align image vertically in the middle */
+}
+
+.simulation-info {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: #444;
+  border-radius: 8px;
+  width: 100%;
+}
+
+.simulation-info p {
+  margin: 5px 0; /* 5px vertical margin */
+  font-weight: bold;
+}
+
+.simulation-info.finished p {
+  color: #19e048; /* Green for completion */
+}
+
+.simulation-info.finished p:last-child {
+  margin-bottom: 0;
+}
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: #333;
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid #444;
+  color: #f0f0f0;
+  width: 300px;
+  max-width: 90%;
+  text-align: center;
+}
+
+.modal-content h3 {
+  color: #61dafb;
+  margin-top: 0;
+}
+
+.modal-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-controls select {
+  padding: 8px 30px 8px 10px; /* 우측 화살표 공간 확보 */
+  border-radius: 5px;
+  border: 1px solid #555;
+  background-color: #444;
+  color: #f0f0f0;
+  width: 100%;
+  box-sizing: border-box;
+  appearance: none; /* 기본 화살표 제거 */
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
+}
+
+.modal-controls input {
+  padding: 8px;
+  border-radius: 5px;
+  border: 1px solid #555;
+  background-color: #444;
+  color: #f0f0f0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.option-value-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  width: 100%;
+}
+
+.option-value-container input[type="range"] {
+  width: 100%;
+  cursor: pointer;
+}
+
+.value-display {
+  font-weight: bold;
+  color: #61dafb;
+  font-size: 1em;
+}
+
+.modal-controls button {
+  background-color: #7a640f;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.modal-controls button:hover {
+  background-color: #9a842f;
+}
+
+.modal-controls button:disabled {
+  background-color: #666;
+  cursor: not-allowed;
+}

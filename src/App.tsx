@@ -507,7 +507,7 @@ function App() {
                     {slot.target ? <p className="target-text">{slot.target.옵션명} {slot.target.수치 ?? ''}</p> : <p className="target-text">목표설정</p>}
                   </div>
                   <span className={`lock-icon ${slot.isLocked ? 'locked-color' : 'unlocked-color'}`} onClick={() => handleToggleLock(gachaState.activeTab, slot.id)}>
-                    <img src={slot.isLocked ? "/src/images/locked.png" : "/src/images/unlocked.png"} alt={slot.isLocked ? "Locked" : "Unlocked"} className="lock-image" />
+                    <img src={slot.isLocked ? "images/locked.png" : "images/unlocked.png"} alt={slot.isLocked ? "Locked" : "Unlocked"} className="lock-image" />
                   </span>
                 </div>
               </div>
@@ -518,10 +518,10 @@ function App() {
               분석{' '}
               <span className="cost-text">
                 {(() => {
-                  const soulCrystalImageMap: Record<string, string> = { '지성': '/src/images/crystal_blue.png', '특수': '/src/images/crystal_sky.png', '야성': '/src/images/crystal_red.png', '자연': '/src/images/crystal_green.png', '변형': '/src/images/crystal_yellow.png' };
+                  const soulCrystalImageMap: Record<string, string> = { '지성': 'images/crystal_blue.png', '특수': 'images/crystal_sky.png', '야성': 'images/crystal_red.png', '자연': 'images/crystal_green.png', '변형': 'images/crystal_yellow.png' };
                   const soulCrystalImage = soulCrystalImageMap[gachaState.activeTab] || soulCrystalImageMap['지성'];
                   const lockedCount = currentTab?.slots.filter(s => s.isLocked).length || 0;
-                  return <>{GACHA_COSTS[lockedCount].soulCrystals}<img src={soulCrystalImage} alt="Soul Crystal" className="cost-image" />{GACHA_COSTS[lockedCount].kina}<img src="/src/images/kina.png" alt="Kina" className="cost-image" /></>;
+                  return <>{GACHA_COSTS[lockedCount].soulCrystals}<img src={soulCrystalImage} alt="Soul Crystal" className="cost-image" />{GACHA_COSTS[lockedCount].kina}<img src="images/kina.png" alt="Kina" className="cost-image" /></>;
                 })()}
               </span>
             </button>
@@ -572,11 +572,11 @@ function App() {
                       {tabNames.map(name => (
                         statistics.avgSoulCrystals[name] > 0 && (
                           <p key={name}>
-                            <img src={({ '지성': '/src/images/crystal_blue.png', '특수': '/src/images/crystal_sky.png', '야성': '/src/images/crystal_red.png', '자연': '/src/images/crystal_green.png', '변형': '/src/images/crystal_yellow.png' } as Record<string, string>)[name]} alt={name} className="cost-image" /> {statistics.avgSoulCrystals[name].toLocaleString()}
+                            <img src={({ '지성': 'images/crystal_blue.png', '특수': 'images/crystal_sky.png', '야성': 'images/crystal_red.png', '자연': 'images/crystal_green.png', '변형': 'images/crystal_yellow.png' } as Record<string, string>)[name]} alt={name} className="cost-image" /> {statistics.avgSoulCrystals[name].toLocaleString()}
                           </p>
                         )
                       ))}
-                      <p><img src="/src/images/kina.png" alt="Kina" className="cost-image" /> {statistics.avgKina.toLocaleString()}</p>
+                      <p><img src="images/kina.png" alt="Kina" className="cost-image" /> {statistics.avgKina.toLocaleString()}</p>
                     </div>
                   </div>
                   {statistics.minRun && (
@@ -586,11 +586,11 @@ function App() {
                         {tabNames.map(name => (
                           statistics.minRun!.soulCrystals[name as TabName] > 0 && (
                             <p key={name}>
-                              <img src={({ '지성': '/src/images/crystal_blue.png', '특수': '/src/images/crystal_sky.png', '야성': '/src/images/crystal_red.png', '자연': '/src/images/crystal_green.png', '변형': '/src/images/crystal_yellow.png' } as Record<string, string>)[name]} alt={name} className="cost-image" /> {statistics.minRun!.soulCrystals[name as TabName].toLocaleString()}
+                              <img src={({ '지성': 'images/crystal_blue.png', '특수': 'images/crystal_sky.png', '야성': 'images/crystal_red.png', '자연': 'images/crystal_green.png', '변형': 'images/crystal_yellow.png' } as Record<string, string>)[name]} alt={name} className="cost-image" /> {statistics.minRun!.soulCrystals[name as TabName].toLocaleString()}
                             </p>
                           )
                         ))}
-                        <p><img src="/src/images/kina.png" alt="Kina" className="cost-image" /> {statistics.minRun.kina.toLocaleString()}</p>
+                        <p><img src="images/kina.png" alt="Kina" className="cost-image" /> {statistics.minRun.kina.toLocaleString()}</p>
                       </div>
                     </div>
                   )}
@@ -601,11 +601,11 @@ function App() {
                         {tabNames.map(name => (
                           statistics.maxRun!.soulCrystals[name as TabName] > 0 && (
                             <p key={name}>
-                              <img src={({ '지성': '/src/images/crystal_blue.png', '특수': '/src/images/crystal_sky.png', '야성': '/src/images/crystal_red.png', '자연': '/src/images/crystal_green.png', '변형': '/src/images/crystal_yellow.png' } as Record<string, string>)[name]} alt={name} className="cost-image" /> {statistics.maxRun!.soulCrystals[name as TabName].toLocaleString()}
+                              <img src={({ '지성': 'images/crystal_blue.png', '특수': 'images/crystal_sky.png', '야성': 'images/crystal_red.png', '자연': 'images/crystal_green.png', '변형': 'images/crystal_yellow.png' } as Record<string, string>)[name]} alt={name} className="cost-image" /> {statistics.maxRun!.soulCrystals[name as TabName].toLocaleString()}
                             </p>
                           )
                         ))}
-                        <p><img src="/src/images/kina.png" alt="Kina" className="cost-image" /> {statistics.maxRun.kina.toLocaleString()}</p>
+                        <p><img src="images/kina.png" alt="Kina" className="cost-image" /> {statistics.maxRun.kina.toLocaleString()}</p>
                       </div>
                     </div>
                   )}
@@ -615,10 +615,10 @@ function App() {
               <div className="costs-summary">
                 <h2>누적 재화 소모량</h2>
                 {tabNames.map(name => {
-                  const soulCrystalImageMap: Record<string, string> = { '지성': '/src/images/crystal_blue.png', '특수': '/src/images/crystal_sky.png', '야성': '/src/images/crystal_red.png', '자연': '/src/images/crystal_green.png', '변형': '/src/images/crystal_yellow.png' };
+                  const soulCrystalImageMap: Record<string, string> = { '지성': 'images/crystal_blue.png', '특수': 'images/crystal_sky.png', '야성': 'images/crystal_red.png', '자연': 'images/crystal_green.png', '변형': 'images/crystal_yellow.png' };
                   return <p key={name}><img src={soulCrystalImageMap[name]} alt={name} className="cost-image" /> {gachaState.totalSoulCrystalsSpent[name] || 0}</p>;
                 })}
-                <p><img src="/src/images/kina.png" alt="Kina" className="cost-image" /> {gachaState.totalKinaSpent.toLocaleString()}</p>
+                <p><img src="images/kina.png" alt="Kina" className="cost-image" /> {gachaState.totalKinaSpent.toLocaleString()}</p>
               </div>
             )}
           </div>

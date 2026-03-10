@@ -57,20 +57,16 @@ function App() {
 
   const isUnpopular = (optionName: string) => {
     const lowerName = optionName.toLowerCase();
-    
-    // Exact match or keyword inclusion
     const isMatch = UNPOPULAR_OPTIONS.includes(optionName) || 
                    UNPOPULAR_KEYWORDS.some(keyword => lowerName.includes(keyword.toLowerCase()));
-    
-    // Special rule: '후방' included but NOT '후방 피해 증폭'
     const isBacksideUnpopular = optionName.includes('후방') && optionName !== '후방 피해 증폭';
-    
     return isMatch || isBacksideUnpopular;
   };
 
   const [selectedGrade, setSelectedGrade] = useState<string>('');
   const [selectedOption, setSelectedOption] = useState<Option | null>(null);
   const [optionValue, setOptionValue] = useState<number | undefined>(undefined);
+  const [editingTargets, setEditingTargets] = useState<Option[]>([]);
 
   useEffect(() => {
     loadProbabilities().then(() => {
@@ -120,6 +116,7 @@ function App() {
     setSelectedGrade('');
     setSelectedOption(null);
     setOptionValue(undefined);
+    setEditingTargets([]);
   }, []);
 
   const handleResetSlot = useCallback(() => {
@@ -129,13 +126,11 @@ function App() {
           if (tab.name === prevState.activeTab) {
             const newSlots = tab.slots.map(slot => {
               if (slot.id === editingSlotId) {
-                // Reset the specific field (option or target)
-                return {
-                  ...slot,
-                  [modalMode]: null,
-                  // If clearing the option, also unlock the slot for convenience
-                  ...(modalMode === 'option' ? { isLocked: false } : {})
-                };
+                if (modalMode === 'option') {
+                  return { ...slot, option: null, isLocked: false };
+                } else {
+                  return { ...slot, targets: [] };
+                }
               }
               return slot;
             });
@@ -150,16 +145,23 @@ function App() {
   }, [editingSlotId, modalMode, handleCancel]);
 
   const handleConfirm = useCallback(() => {
-    if (editingSlotId !== null && selectedOption) {
+    if (editingSlotId !== null) {
       setGachaState(prevState => {
         const newTabs = prevState.tabs.map(tab => {
           if (tab.name === prevState.activeTab) {
             const newSlots = tab.slots.map(slot => {
               if (slot.id === editingSlotId) {
-                return {
-                  ...slot,
-                  [modalMode]: { ...selectedOption, 수치: optionValue },
-                };
+                if (modalMode === 'option') {
+                  return {
+                    ...slot,
+                    option: selectedOption ? { ...selectedOption, 수치: optionValue } : null,
+                  };
+                } else {
+                  return {
+                    ...slot,
+                    targets: editingTargets,
+                  };
+                }
               }
               return slot;
             });
@@ -171,15 +173,26 @@ function App() {
       });
     }
     handleCancel();
-  }, [editingSlotId, selectedOption, optionValue, handleCancel, modalMode]);
+  }, [editingSlotId, selectedOption, optionValue, editingTargets, handleCancel, modalMode]);
+
+  const handleAddTarget = useCallback(() => {
+    if (selectedOption && optionValue !== undefined) {
+      const newTarget = { ...selectedOption, 수치: optionValue };
+      if (!editingTargets.some(t => t.옵션명 === newTarget.옵션명 && t.등급 === newTarget.등급 && t.수치 === newTarget.수치)) {
+        setEditingTargets(prev => [...prev, newTarget]);
+      }
+    }
+  }, [selectedOption, optionValue, editingTargets]);
+
+  const handleRemoveTarget = useCallback((index: number) => {
+    setEditingTargets(prev => prev.filter((_, i) => i !== index));
+  }, []);
 
   const handleSlotClick = useCallback((slotId: number) => {
     const slot = currentTab?.slots.find(s => s.id === slotId);
     if (slot && !slot.isLocked) {
       setEditingSlotId(slotId);
       setModalMode('option');
-      
-      // Load existing option if present
       if (slot.option) {
         setSelectedGrade(slot.option.등급);
         setSelectedOption(slot.option);
@@ -189,7 +202,6 @@ function App() {
         setSelectedOption(null);
         setOptionValue(undefined);
       }
-      
       setIsCustomizationModalOpen(true);
     }
   }, [currentTab]);
@@ -200,18 +212,10 @@ function App() {
     if (slot) {
       setEditingSlotId(slotId);
       setModalMode('target');
-
-      // For target setting, we always default to 'All Grades' for better UX
       setSelectedGrade('');
-      
-      if (slot.target) {
-        setSelectedOption(slot.target);
-        setOptionValue(slot.target.수치);
-      } else {
-        setSelectedOption(null);
-        setOptionValue(undefined);
-      }
-
+      setSelectedOption(null);
+      setOptionValue(undefined);
+      setEditingTargets(slot.targets || []);
       setIsCustomizationModalOpen(true);
     }
   }, [currentTab]);
@@ -241,12 +245,11 @@ function App() {
       return;
     }
     setIsSimulationFinished(false);
-    setStatistics(null); // Clear statistics
+    setStatistics(null);
     setGachaState(prevState => {
       const activeTab = prevState.tabs.find(tab => tab.name === prevState.activeTab);
       if (!activeTab) return prevState;
-      const lockedSlotsCount = activeTab.slots.filter(slot => slot.isLocked).length;
-      if (lockedSlotsCount === 9) {
+      if (activeTab.slots.filter(slot => slot.isLocked).length === 9) {
         alert("모든 슬롯이 잠겨 있습니다. 가챠를 진행할 수 없습니다.");
         return prevState;
       }
@@ -271,7 +274,7 @@ function App() {
     }));
     setSimulationCount(0);
     setIsSimulationFinished(false);
-    setStatistics(null); // Clear statistics
+    setStatistics(null);
   }, []);
 
   const handleStopSimulation = useCallback(() => {
@@ -302,7 +305,7 @@ function App() {
       setIsSimulating(false);
       return;
     }
-    const targetedSlots = currentSimulatedTab.slots.filter(slot => slot.target !== null);
+    const targetedSlots = currentSimulatedTab.slots.filter(slot => slot.targets.length > 0);
     if (targetedSlots.length === 0) {
       alert("목표가 설정된 슬롯이 없습니다.");
       setIsSimulating(false);
@@ -320,19 +323,17 @@ function App() {
         const { newState } = performSingleRoll(currentSimulatedState, currentSimulatedState.activeTab);
         currentSimulatedState = newState;
         
-        // 1. Check for newly achieved target BEFORE locking
         currentSimulatedTab = currentSimulatedState.tabs.find(tab => tab.name === currentSimulatedState.activeTab);
         if (currentSimulatedTab) {
           targetAchieved = currentSimulatedTab.slots.some(slot => 
-            slot.target !== null && !slot.isLocked && checkTargetAchieved(slot)
+            slot.targets.length > 0 && !slot.isLocked && checkTargetAchieved(slot)
           );
         }
 
-        // 2. Then, lock the newly achieved targets
         currentSimulatedState.tabs = currentSimulatedState.tabs.map(tab => {
           if (tab.name === currentSimulatedState.activeTab) {
             const updatedSlots = tab.slots.map(slot => 
-              (slot.target && !slot.isLocked && checkTargetAchieved(slot)) 
+              (slot.targets.length > 0 && !slot.isLocked && checkTargetAchieved(slot)) 
                 ? { ...slot, isLocked: true } 
                 : slot
             );
@@ -378,8 +379,7 @@ function App() {
       setIsSimulating(false);
       return;
     }
-    const targetedSlots = currentSimulatedTab.slots.filter(slot => slot.target !== null);
-    if (targetedSlots.length === 0) {
+    if (currentSimulatedTab.slots.filter(slot => slot.targets.length > 0).length === 0) {
       alert("목표가 설정된 슬롯이 없습니다.");
       setIsSimulating(false);
       return;
@@ -391,7 +391,7 @@ function App() {
     }
 
     const areAllTargetsMet = (tab: Tab): boolean => {
-      const activeTargetedSlots = tab.slots.filter(slot => slot.target !== null);
+      const activeTargetedSlots = tab.slots.filter(slot => slot.targets.length > 0);
       return activeTargetedSlots.length > 0 && activeTargetedSlots.every(slot => checkTargetAchieved(slot));
     };
 
@@ -402,7 +402,7 @@ function App() {
         currentSimulatedState = newState;
         currentSimulatedState.tabs = currentSimulatedState.tabs.map(tab => {
           if (tab.name === currentSimulatedState.activeTab) {
-            const updatedSlots = tab.slots.map(slot => (slot.target && !slot.isLocked && checkTargetAchieved(slot)) ? { ...slot, isLocked: true } : slot);
+            const updatedSlots = tab.slots.map(slot => (slot.targets.length > 0 && !slot.isLocked && checkTargetAchieved(slot)) ? { ...slot, isLocked: true } : slot);
             return { ...tab, slots: updatedSlots };
           }
           return tab;
@@ -460,12 +460,12 @@ function App() {
       let runRolls = 0;
 
       const areAllTargetsMet = (tab: Tab): boolean => {
-        const activeTargetedSlots = tab.slots.filter(slot => slot.target !== null);
+        const activeTargetedSlots = tab.slots.filter(slot => slot.targets.length > 0);
         return activeTargetedSlots.length > 0 && activeTargetedSlots.every(slot => checkTargetAchieved(slot));
       };
 
-      const targetedSlotsCount = (currentRunState.tabs.find(t => t.name === activeTabName)?.slots.filter(s => s.target !== null).length || 0);
-      if (targetedSlotsCount === 0) {
+      const currentActiveTab = currentRunState.tabs.find(t => t.name === activeTabName);
+      if (!currentActiveTab || currentActiveTab.slots.filter(s => s.targets.length > 0).length === 0) {
         alert("목표가 설정된 슬롯이 없습니다.");
         setIsSimulating(false);
         return;
@@ -480,7 +480,7 @@ function App() {
 
           currentRunState.tabs = currentRunState.tabs.map(tab => {
             if (tab.name === activeTabName) {
-              const updatedSlots = tab.slots.map(slot => (slot.target && !slot.isLocked && checkTargetAchieved(slot)) ? { ...slot, isLocked: true } : slot);
+              const updatedSlots = tab.slots.map(slot => (slot.targets.length > 0 && !slot.isLocked && checkTargetAchieved(slot)) ? { ...slot, isLocked: true } : slot);
               return { ...tab, slots: updatedSlots };
             }
             return tab;
@@ -493,7 +493,6 @@ function App() {
 
       if (stopSignalRef.current) break;
 
-      // Update run data
       accumulatedKina += currentRunState.totalKinaSpent;
       accumulatedRolls += runRolls;
       tabNames.forEach(name => {
@@ -509,7 +508,6 @@ function App() {
       if (!currentMinRun || runRolls < currentMinRun.rolls) currentMinRun = runResult;
       if (!currentMaxRun || runRolls > currentMaxRun.rolls) currentMaxRun = runResult;
 
-      // Update real-time statistics state
       setStatistics({
         count: run,
         totalRolls: accumulatedRolls,
@@ -524,7 +522,7 @@ function App() {
       });
 
       setSimulationCount(run);
-      setGachaState(currentRunState); // Update UI every single run
+      setGachaState(currentRunState);
     }
 
     setIsSimulating(false);
@@ -550,8 +548,15 @@ function App() {
                   <div className={`option-display ${slot.option?.등급 ? `grade-${slot.option.등급}` : ''}`} onClick={() => handleSlotClick(slot.id)}>
                     {slot.option ? <p>{slot.option.옵션명} {slot.option.수치 ?? ''}</p> : <p>옵션 없음</p>}
                   </div>
-                  <div className={`target-display ${slot.target?.등급 ? `grade-${slot.target.등급}` : ''}`} onClick={(e) => handleTargetClick(slot.id, e)}>
-                    {slot.target ? <p className="target-text">{slot.target.옵션명} {slot.target.수치 ?? ''}</p> : <p className="target-text">목표설정</p>}
+                  <div className="target-display" onClick={(e) => handleTargetClick(slot.id, e)}>
+                    {slot.targets && slot.targets.length > 0 ? (
+                      <p className="target-text has-targets">
+                        {slot.targets[0].옵션명} {slot.targets[0].수치}
+                        {slot.targets.length > 1 ? ` (외 ${slot.targets.length - 1})` : ''}
+                      </p>
+                    ) : (
+                      <p className="target-text">목표설정</p>
+                    )}
                   </div>
                   <span className={`lock-icon ${slot.isLocked ? 'locked-color' : 'unlocked-color'}`} onClick={() => handleToggleLock(gachaState.activeTab, slot.id)}>
                     <img src={slot.isLocked ? "images/locked.png" : "images/unlocked.png"} alt={slot.isLocked ? "Locked" : "Unlocked"} className="lock-image" />
@@ -680,6 +685,19 @@ function App() {
         <div className="modal-overlay" onClick={handleCancel}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3>슬롯 {editingSlotId} {modalMode === 'option' ? '옵션 설정' : '목표 설정'}</h3>
+            
+            {modalMode === 'target' && (
+              <div className="target-list">
+                {editingTargets.map((target, index) => (
+                  <div key={index} className={`target-tag grade-${target.등급}`}>
+                    <span>{target.옵션명} {target.수치}</span>
+                    <button className="remove-tag" onClick={() => handleRemoveTarget(index)}>×</button>
+                  </div>
+                ))}
+                {editingTargets.length === 0 && <p className="empty-targets">설정된 목표가 없습니다.</p>}
+              </div>
+            )}
+
             <div className="modal-controls">
               {modalMode === 'option' && (
                 <select 
@@ -704,7 +722,6 @@ function App() {
                   <option key={option.옵션명} value={option.옵션명}>{option.옵션명} ({option["수치(최소)"]}~{option["수치(최대)"]})</option>
                 ))}
               </select>
-              {/* Option Value Slider */}
               <div className="option-value-container">
                 <input 
                   type="range" 
@@ -719,8 +736,21 @@ function App() {
                   {optionValue !== undefined ? optionValue : '-'}
                 </span>
               </div>
-              <button onClick={handleConfirm} disabled={!selectedOption || optionValue === undefined}>확인</button>
-              <button onClick={handleResetSlot} className="reset-button">초기화</button>
+
+              {modalMode === 'target' ? (
+                <>
+                  <button onClick={handleAddTarget} disabled={!selectedOption || optionValue === undefined} className="add-button">목표 추가</button>
+                  <div className="modal-footer-buttons">
+                    <button onClick={handleConfirm} className="confirm-button">확인</button>
+                    <button onClick={handleResetSlot} className="reset-button">초기화</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <button onClick={handleConfirm} disabled={!selectedOption || optionValue === undefined}>확인</button>
+                  <button onClick={handleResetSlot} className="reset-button">초기화</button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -766,7 +796,6 @@ function App() {
                   >
                     {showUnpopularOptions ? 'ON' : 'OFF'}
                   </button>
-                  {/* Dummy placeholder to align with the animation slider above */}
                   <div className="slider-container hidden">
                     <input type="range" disabled />
                     <span className="slider-label">정렬용 여백</span>

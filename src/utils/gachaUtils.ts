@@ -18,7 +18,7 @@ export interface Slot {
   id: number; // 1 to 9
   option: Option | null;
   isLocked: boolean;
-  target: Option | null; // New field for user-defined target
+  targets: Option[]; // Changed from target: Option | null to targets: Option[]
 }
 
 export type TabName = "지성" | "야성" | "자연" | "변형" | "특수";
@@ -41,7 +41,7 @@ export const createEmptyTab = (name: TabName): Tab => {
     id: i + 1,
     option: null,
     isLocked: false,
-    target: null, // Initialize target as null
+    targets: [], // Initialize as empty array
   }));
   return { name, slots };
 };
@@ -204,7 +204,6 @@ export function getOptionsBySlotType(slotType: string): Option[] {
 }
 
 // Helper function to perform a single gacha roll on an existing GachaState
-// ... (rest of the file)
 export function performSingleRoll(currentState: GachaState, currentActiveTabName: TabName): { newState: GachaState; rollSoulCrystals: number; rollKina: number; } {
   const activeTab = currentState.tabs.find(tab => tab.name === currentActiveTabName);
   if (!activeTab) return { newState: currentState, rollSoulCrystals: 0, rollKina: 0 };
@@ -249,26 +248,28 @@ export function performSingleRoll(currentState: GachaState, currentActiveTabName
   };
 }
 
-// Helper function to check if a slot's current option meets its target
+// Helper function to check if a slot's current option meets any of its targets
 export function checkTargetAchieved(slot: Slot): boolean {
-  if (!slot.option || !slot.target) {
-    return false; // No current option or no target set
+  if (!slot.option || !slot.targets || slot.targets.length === 0) {
+    return false; // No current option or no targets set
   }
 
-  // 1. Option name must match
-  if (slot.option.옵션명 !== slot.target.옵션명) {
-    return false;
-  }
-
-  // 2. If target has a specific value, check if current option's value meets or exceeds it
-  // In this case, we ignore the grade because a higher/lower grade with the same value is still valid.
-  if (slot.target.수치 !== undefined && slot.target.수치 !== null) {
-    if (slot.option.수치 === undefined || slot.option.수치 === null) {
+  // Check if current option meets ANY of the targets (OR condition)
+  return slot.targets.some(target => {
+    // 1. Option name must match
+    if (slot.option!.옵션명 !== target.옵션명) {
       return false;
     }
-    return slot.option.수치 >= slot.target.수치;
-  }
 
-  // 3. If target does not have a specific value, only name and grade need to match
-  return slot.option.등급 === slot.target.등급;
+    // 2. If target has a specific value, check if current option's value meets or exceeds it
+    if (target.수치 !== undefined && target.수치 !== null) {
+      if (slot.option!.수치 === undefined || slot.option!.수치 === null) {
+        return false;
+      }
+      return slot.option!.수치 >= target.수치;
+    }
+
+    // 3. If target does not have a specific value, only name and grade need to match
+    return slot.option!.등급 === target.등급;
+  });
 }

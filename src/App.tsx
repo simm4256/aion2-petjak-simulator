@@ -40,12 +40,12 @@ function App() {
   const [statistics, setStatistics] = useState<{
     count: number;
     totalRolls: number;
-    minRun: { rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null;
-    maxRun: { rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null;
+    minRun: { runIndex: number; rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null;
+    maxRun: { runIndex: number; rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null;
     avgSoulCrystals: Record<TabName, number>;
     avgKina: number;
     avgRolls: number;
-  } | null>(null);
+  } | null>(null); // New state for statistics results
   const [isAnimationOn, setIsAnimationOn] = useState<boolean>(true);
   const [animationSpeed, setAnimationSpeed] = useState<number>(100);
   const [isProbabilitiesLoaded, setIsProbabilitiesLoaded] = useState(false);
@@ -420,8 +420,8 @@ function App() {
     let accumulatedRolls = 0;
     const accumulatedSoulCrystals: Record<TabName, number> = tabNames.reduce((acc, name) => ({ ...acc, [name]: 0 }), {} as Record<TabName, number>);
 
-    let currentMinRun: { rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null = null;
-    let currentMaxRun: { rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null = null;
+    let currentMinRun: { runIndex: number; rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null = null;
+    let currentMaxRun: { runIndex: number; rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null = null;
 
     const activeTabName = gachaState.activeTab;
 
@@ -471,6 +471,7 @@ function App() {
       });
 
       const runResult = {
+        runIndex: run,
         rolls: runRolls,
         kina: currentRunState.totalKinaSpent,
         soulCrystals: { ...currentRunState.totalSoulCrystalsSpent }
@@ -514,8 +515,8 @@ function App() {
     let accumulatedRolls = 0;
     const accumulatedSoulCrystals: Record<TabName, number> = tabNames.reduce((acc, name) => ({ ...acc, [name]: 0 }), {} as Record<TabName, number>);
 
-    let currentMinRun: { rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null = null;
-    let currentMaxRun: { rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null = null;
+    let currentMinRun: { runIndex: number; rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null = null;
+    let currentMaxRun: { runIndex: number; rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null = null;
 
     const activeTabName = gachaState.activeTab;
     const baseStateSnapshot = JSON.parse(JSON.stringify(gachaState)) as GachaState;
@@ -563,6 +564,7 @@ function App() {
       });
 
       const runResult = {
+        runIndex: run,
         rolls: runRolls,
         kina: currentRunState.totalKinaSpent,
         soulCrystals: { ...currentRunState.totalSoulCrystalsSpent }
@@ -701,7 +703,7 @@ function App() {
                   </div>
                   {statistics.minRun && (
                     <div className="stat-item highlight">
-                      <span className="stat-header">최소 소모 (분석: {statistics.minRun.rolls.toLocaleString()}회)</span>
+                      <span className="stat-header">최소 소모 ({statistics.minRun.runIndex}회차)</span>
                       <div className="stat-values">
                         {tabNames.map(name => (
                           statistics.minRun!.soulCrystals[name as TabName] > 0 && (
@@ -716,7 +718,7 @@ function App() {
                   )}
                   {statistics.maxRun && (
                     <div className="stat-item highlight">
-                      <span className="stat-header">최대 소모 (분석: {statistics.maxRun.rolls.toLocaleString()}회)</span>
+                      <span className="stat-header">최대 소모 ({statistics.maxRun.runIndex}회차)</span>
                       <div className="stat-values">
                         {tabNames.map(name => (
                           statistics.maxRun!.soulCrystals[name as TabName] > 0 && (

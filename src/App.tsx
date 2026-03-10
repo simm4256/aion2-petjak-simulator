@@ -7,6 +7,7 @@ import {
   performSingleRoll,
   getAllGrades,
   getOptionsByGradeAndSlotType,
+  getOptionsBySlotType,
   checkTargetAchieved,
 } from './utils/gachaUtils';
 import type {
@@ -78,8 +79,10 @@ function App() {
 
   const handleOptionChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
     const optionName = event.target.value;
-    const optionsForSelectedGradeAndSlot = getOptionsByGradeAndSlotType(selectedGrade, currentSlotType);
-    const selected = optionsForSelectedGradeAndSlot.find(opt => opt.옵션명 === optionName) || null;
+    const optionsForSlot = selectedGrade 
+      ? getOptionsByGradeAndSlotType(selectedGrade, currentSlotType)
+      : getOptionsBySlotType(currentSlotType);
+    const selected = optionsForSlot.find(opt => opt.옵션명 === optionName) || null;
     setSelectedOption(selected);
     if (selected) {
       setOptionValue(selected["수치(최소)"]);
@@ -154,13 +157,13 @@ function App() {
       setEditingSlotId(slotId);
       setModalMode('target');
 
-      // Load existing target if present
+      // For target setting, we always default to 'All Grades' for better UX
+      setSelectedGrade('');
+      
       if (slot.target) {
-        setSelectedGrade(slot.target.등급);
         setSelectedOption(slot.target);
         setOptionValue(slot.target.수치);
       } else {
-        setSelectedGrade('');
         setSelectedOption(null);
         setOptionValue(undefined);
       }
@@ -514,13 +517,17 @@ function App() {
             ))}
           </div>
           <div className="gacha-controls">
-            <button onClick={handleGachaRoll} disabled={!isProbabilitiesLoaded || isSimulating}>
+            <button 
+              onClick={handleGachaRoll} 
+              disabled={!isProbabilitiesLoaded || isSimulating || (currentTab?.slots.filter(s => s.isLocked).length === 9)}
+            >
               분석{' '}
               <span className="cost-text">
                 {(() => {
                   const soulCrystalImageMap: Record<string, string> = { '지성': 'images/crystal_blue.png', '특수': 'images/crystal_sky.png', '야성': 'images/crystal_red.png', '자연': 'images/crystal_green.png', '변형': 'images/crystal_yellow.png' };
                   const soulCrystalImage = soulCrystalImageMap[gachaState.activeTab] || soulCrystalImageMap['지성'];
                   const lockedCount = currentTab?.slots.filter(s => s.isLocked).length || 0;
+                  if (lockedCount === 9) return "불가능";
                   return <>{GACHA_COSTS[lockedCount].soulCrystals}<img src={soulCrystalImage} alt="Soul Crystal" className="cost-image" />{GACHA_COSTS[lockedCount].kina}<img src="images/kina.png" alt="Kina" className="cost-image" /></>;
                 })()}
               </span>
@@ -529,7 +536,7 @@ function App() {
               <button 
                 className={`main-sim-button ${isSimMenuOpen ? 'active' : ''}`}
                 onClick={() => setIsSimMenuOpen(!isSimMenuOpen)}
-                disabled={!isProbabilitiesLoaded || isSimulating}
+                disabled={!isProbabilitiesLoaded || isSimulating || (currentTab?.slots.filter(s => s.isLocked).length === 9)}
               >
                 시뮬레이션 {isSimMenuOpen ? '▲' : '▼'}
               </button>
@@ -630,19 +637,24 @@ function App() {
           <div className="modal-content">
             <h3>슬롯 {editingSlotId} {modalMode === 'option' ? '옵션 설정' : '목표 설정'}</h3>
             <div className="modal-controls">
-              <select 
-                value={selectedGrade} 
-                onChange={handleGradeChange} 
-                className={selectedGrade ? `grade-${selectedGrade}` : ''}
-              >
-                <option value="" className="grade-default">등급 선택</option>
-                {availableGrades.map(grade => (
-                  <option key={grade} value={grade} className={`grade-${grade}`}>{grade}</option>
-                ))}
-              </select>
-              <select value={selectedOption?.옵션명 || ''} onChange={handleOptionChange} disabled={!selectedGrade || !currentSlotType}>
+              {modalMode === 'option' && (
+                <select 
+                  value={selectedGrade} 
+                  onChange={handleGradeChange} 
+                  className={selectedGrade ? `grade-${selectedGrade}` : ''}
+                >
+                  <option value="" className="grade-default">등급 선택 (전체)</option>
+                  {availableGrades.map(grade => (
+                    <option key={grade} value={grade} className={`grade-${grade}`}>{grade}</option>
+                  ))}
+                </select>
+              )}
+              <select value={selectedOption?.옵션명 || ''} onChange={handleOptionChange} disabled={!currentSlotType}>
                 <option value="">옵션 선택</option>
-                {selectedGrade && currentSlotType && getOptionsByGradeAndSlotType(selectedGrade, currentSlotType).map(option => (
+                {(modalMode === 'option' && selectedGrade 
+                  ? getOptionsByGradeAndSlotType(selectedGrade, currentSlotType) 
+                  : getOptionsBySlotType(currentSlotType)
+                ).map(option => (
                   <option key={option.옵션명} value={option.옵션명}>{option.옵션명} ({option["수치(최소)"]}~{option["수치(최대)"]})</option>
                 ))}
               </select>

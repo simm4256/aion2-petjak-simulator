@@ -179,7 +179,32 @@ export function getOptionsByGradeAndSlotType(grade: string, slotType: string): O
   return filteredOptions.sort((a, b) => a.옵션명.localeCompare(b.옵션명));
 }
 
+export function getOptionsBySlotType(slotType: string): Option[] {
+  const filteredOptions: Option[] = [];
+  if (processedProbabilities[slotType]) {
+    processedProbabilities[slotType].forEach(option => {
+      filteredOptions.push(option);
+    });
+  }
+  // Group by option name and find global min/max
+  const uniqueOptionsMap = new Map<string, Option>();
+  filteredOptions.forEach(opt => {
+    const existing = uniqueOptionsMap.get(opt.옵션명);
+    if (!existing) {
+      uniqueOptionsMap.set(opt.옵션명, { ...opt });
+    } else {
+      if (opt["수치(최소)"] < existing["수치(최소)"]) existing["수치(최소)"] = opt["수치(최소)"];
+      if (opt["수치(최대)"] > existing["수치(최대)"]) {
+        existing["수치(최대)"] = opt["수치(최대)"];
+        existing.등급 = opt.등급; // Use the grade of the highest max for display
+      }
+    }
+  });
+  return Array.from(uniqueOptionsMap.values()).sort((a, b) => a.옵션명.localeCompare(b.옵션명));
+}
+
 // Helper function to perform a single gacha roll on an existing GachaState
+// ... (rest of the file)
 export function performSingleRoll(currentState: GachaState, currentActiveTabName: TabName): { newState: GachaState; rollSoulCrystals: number; rollKina: number; } {
   const activeTab = currentState.tabs.find(tab => tab.name === currentActiveTabName);
   if (!activeTab) return { newState: currentState, rollSoulCrystals: 0, rollKina: 0 };
@@ -230,19 +255,20 @@ export function checkTargetAchieved(slot: Slot): boolean {
     return false; // No current option or no target set
   }
 
-  // Check if option name and grade match
-  if (slot.option.옵션명 !== slot.target.옵션명 || slot.option.등급 !== slot.target.등급) {
+  // 1. Option name must match
+  if (slot.option.옵션명 !== slot.target.옵션명) {
     return false;
   }
 
-  // If target has a specific value, check if current option's value meets or exceeds it
+  // 2. If target has a specific value, check if current option's value meets or exceeds it
+  // In this case, we ignore the grade because a higher/lower grade with the same value is still valid.
   if (slot.target.수치 !== undefined && slot.target.수치 !== null) {
     if (slot.option.수치 === undefined || slot.option.수치 === null) {
-      return false; // Target has value, but current option doesn't
+      return false;
     }
     return slot.option.수치 >= slot.target.수치;
   }
 
-  // If target does not have a specific value, only name and grade need to match
-  return true;
+  // 3. If target does not have a specific value, only name and grade need to match
+  return slot.option.등급 === slot.target.등급;
 }

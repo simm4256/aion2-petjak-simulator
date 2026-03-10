@@ -49,7 +49,24 @@ function App() {
   const [isAnimationOn, setIsAnimationOn] = useState<boolean>(true);
   const [animationSpeed, setAnimationSpeed] = useState<number>(100);
   const [isProbabilitiesLoaded, setIsProbabilitiesLoaded] = useState(false);
+  const [showUnpopularOptions, setShowUnpopularOptions] = useState<boolean>(false);
   const stopSignalRef = useRef(false);
+
+  const UNPOPULAR_OPTIONS = ['정신력', '보스 공격력', '치명타 공격력', '완벽', '재생', '무기 피해 내성', '치명타 피해 내성'];
+  const UNPOPULAR_KEYWORDS = ['종족', '방어력', '치명타 저항', 'pve', '관통', '봉혼석 추가 피해'];
+
+  const isUnpopular = (optionName: string) => {
+    const lowerName = optionName.toLowerCase();
+    
+    // Exact match or keyword inclusion
+    const isMatch = UNPOPULAR_OPTIONS.includes(optionName) || 
+                   UNPOPULAR_KEYWORDS.some(keyword => lowerName.includes(keyword.toLowerCase()));
+    
+    // Special rule: '후방' included but NOT '후방 피해 증폭'
+    const isBacksideUnpopular = optionName.includes('후방') && optionName !== '후방 피해 증폭';
+    
+    return isMatch || isBacksideUnpopular;
+  };
 
   const [selectedGrade, setSelectedGrade] = useState<string>('');
   const [selectedOption, setSelectedOption] = useState<Option | null>(null);
@@ -104,6 +121,33 @@ function App() {
     setSelectedOption(null);
     setOptionValue(undefined);
   }, []);
+
+  const handleResetSlot = useCallback(() => {
+    if (editingSlotId !== null) {
+      setGachaState(prevState => {
+        const newTabs = prevState.tabs.map(tab => {
+          if (tab.name === prevState.activeTab) {
+            const newSlots = tab.slots.map(slot => {
+              if (slot.id === editingSlotId) {
+                // Reset the specific field (option or target)
+                return {
+                  ...slot,
+                  [modalMode]: null,
+                  // If clearing the option, also unlock the slot for convenience
+                  ...(modalMode === 'option' ? { isLocked: false } : {})
+                };
+              }
+              return slot;
+            });
+            return { ...tab, slots: newSlots };
+          }
+          return tab;
+        });
+        return { ...prevState, tabs: newTabs };
+      });
+    }
+    handleCancel();
+  }, [editingSlotId, modalMode, handleCancel]);
 
   const handleConfirm = useCallback(() => {
     if (editingSlotId !== null && selectedOption) {
@@ -633,8 +677,8 @@ function App() {
       </div>
 
       {isCustomizationModalOpen && editingSlotId !== null && (
-        <div className="modal-overlay">
-          <div className="modal-content">
+        <div className="modal-overlay" onClick={handleCancel}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3>슬롯 {editingSlotId} {modalMode === 'option' ? '옵션 설정' : '목표 설정'}</h3>
             <div className="modal-controls">
               {modalMode === 'option' && (
@@ -654,7 +698,9 @@ function App() {
                 {(modalMode === 'option' && selectedGrade 
                   ? getOptionsByGradeAndSlotType(selectedGrade, currentSlotType) 
                   : getOptionsBySlotType(currentSlotType)
-                ).map(option => (
+                )
+                .filter(option => showUnpopularOptions || !isUnpopular(option.옵션명))
+                .map(option => (
                   <option key={option.옵션명} value={option.옵션명}>{option.옵션명} ({option["수치(최소)"]}~{option["수치(최대)"]})</option>
                 ))}
               </select>
@@ -674,7 +720,7 @@ function App() {
                 </span>
               </div>
               <button onClick={handleConfirm} disabled={!selectedOption || optionValue === undefined}>확인</button>
-              <button onClick={handleCancel}>취소</button>
+              <button onClick={handleResetSlot} className="reset-button">초기화</button>
             </div>
           </div>
         </div>
@@ -705,6 +751,25 @@ function App() {
                       disabled={!isAnimationOn}
                     />
                     <span className="slider-label">애니메이션 속도 ({animationSpeed})</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="settings-section">
+              <h4>UI 설정</h4>
+              <div className="settings-item">
+                <span>비인기 옵션 보기</span>
+                <div className="settings-controls">
+                  <button 
+                    className={`toggle-button ${showUnpopularOptions ? 'on' : 'off'}`}
+                    onClick={() => setShowUnpopularOptions(!showUnpopularOptions)}
+                  >
+                    {showUnpopularOptions ? 'ON' : 'OFF'}
+                  </button>
+                  {/* Dummy placeholder to align with the animation slider above */}
+                  <div className="slider-container hidden">
+                    <input type="range" disabled />
+                    <span className="slider-label">정렬용 여백</span>
                   </div>
                 </div>
               </div>

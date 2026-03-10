@@ -36,7 +36,7 @@ function App() {
   const [simulationCount, setSimulationCount] = useState<number>(0);
   const [isSimulationFinished, setIsSimulationFinished] = useState<boolean>(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
-  const [isSimMenuOpen, setIsSimMenuOpen] = useState<boolean>(false); // New state for simulation menu
+  const [isSimMenuOpen, setIsSimMenuOpen] = useState<boolean>(false);
   const [statistics, setStatistics] = useState<{
     count: number;
     totalRolls: number;
@@ -45,7 +45,7 @@ function App() {
     avgSoulCrystals: Record<TabName, number>;
     avgKina: number;
     avgRolls: number;
-  } | null>(null); // New state for statistics results
+  } | null>(null);
   const [isAnimationOn, setIsAnimationOn] = useState<boolean>(true);
   const [animationSpeed, setAnimationSpeed] = useState<number>(100);
   const [isProbabilitiesLoaded, setIsProbabilitiesLoaded] = useState(false);
@@ -76,6 +76,17 @@ function App() {
   }, []);
 
   const currentTab = useMemo(() => gachaState.tabs.find(tab => tab.name === gachaState.activeTab), [gachaState]);
+
+  const canRunSimulation = useMemo(() => {
+    if (!currentTab) return false;
+    const targetedSlots = currentTab.slots.filter(slot => slot.targets.length > 0);
+    if (targetedSlots.length === 0) return false;
+    return targetedSlots.some(slot => !checkTargetAchieved(slot) && !slot.isLocked);
+  }, [currentTab]);
+
+  const hasTargets = useMemo(() => {
+    return currentTab?.slots.some(slot => slot.targets.length > 0) || false;
+  }, [currentTab]);
 
   const currentSlotType = useMemo(() => {
     if (editingSlotId === null || !currentTab) return '';
@@ -284,11 +295,7 @@ function App() {
   }, []);
 
   const handleSingleSimulation = useCallback(async () => {
-    if (!isProbabilitiesLoaded) {
-      alert("확률 정보 로딩 중입니다. 잠시 후 다시 시도해주세요.");
-      return;
-    }
-    if (isSimulating) return;
+    if (!isProbabilitiesLoaded || isSimulating || !canRunSimulation) return;
 
     stopSignalRef.current = false;
     setIsSimulating(true);
@@ -304,17 +311,6 @@ function App() {
     if (!currentSimulatedTab) {
       setIsSimulating(false);
       return;
-    }
-    const targetedSlots = currentSimulatedTab.slots.filter(slot => slot.targets.length > 0);
-    if (targetedSlots.length === 0) {
-      alert("목표가 설정된 슬롯이 없습니다.");
-      setIsSimulating(false);
-      return;
-    }
-    if (currentSimulatedTab.slots.filter(slot => slot.isLocked).length === 9) {
-        alert("모든 슬롯이 잠겨 있습니다. 시뮬레이션을 진행할 수 없습니다.");
-        setIsSimulating(false);
-        return;
     }
 
     const batchSize = isAnimationOn ? animationSpeed : 1000;
@@ -355,14 +351,10 @@ function App() {
     setGachaState(currentSimulatedState);
     setIsSimulating(false);
     setIsSimulationFinished(true);
-  }, [gachaState, isProbabilitiesLoaded, isSimulating, isAnimationOn, animationSpeed, stopSignalRef]);
+  }, [gachaState, isProbabilitiesLoaded, isSimulating, isAnimationOn, animationSpeed, stopSignalRef, canRunSimulation]);
 
   const handleFullSimulation = useCallback(async () => {
-    if (!isProbabilitiesLoaded) {
-      alert("확률 정보 로딩 중입니다. 잠시 후 다시 시도해주세요.");
-      return;
-    }
-    if (isSimulating) return;
+    if (!isProbabilitiesLoaded || isSimulating || !canRunSimulation) return;
 
     stopSignalRef.current = false;
     setIsSimulating(true);
@@ -378,16 +370,6 @@ function App() {
     if (!currentSimulatedTab) {
       setIsSimulating(false);
       return;
-    }
-    if (currentSimulatedTab.slots.filter(slot => slot.targets.length > 0).length === 0) {
-      alert("목표가 설정된 슬롯이 없습니다.");
-      setIsSimulating(false);
-      return;
-    }
-    if (currentSimulatedTab.slots.filter(slot => slot.isLocked).length === 9) {
-        alert("모든 슬롯이 잠겨 있습니다. 시뮬레이션을 진행할 수 없습니다.");
-        setIsSimulating(false);
-        return;
     }
 
     const areAllTargetsMet = (tab: Tab): boolean => {
@@ -422,14 +404,10 @@ function App() {
     setGachaState(currentSimulatedState);
     setIsSimulating(false);
     setIsSimulationFinished(true);
-  }, [gachaState, isProbabilitiesLoaded, isSimulating, isAnimationOn, animationSpeed, stopSignalRef]);
+  }, [gachaState, isProbabilitiesLoaded, isSimulating, isAnimationOn, animationSpeed, stopSignalRef, canRunSimulation]);
 
   const handleStatisticsSimulation = useCallback(async () => {
-    if (!isProbabilitiesLoaded) {
-      alert("확률 정보 로딩 중입니다. 잠시 후 다시 시도해주세요.");
-      return;
-    }
-    if (isSimulating) return;
+    if (!isProbabilitiesLoaded || isSimulating || !hasTargets) return;
 
     stopSignalRef.current = false;
     setIsSimulating(true);
@@ -463,13 +441,6 @@ function App() {
         const activeTargetedSlots = tab.slots.filter(slot => slot.targets.length > 0);
         return activeTargetedSlots.length > 0 && activeTargetedSlots.every(slot => checkTargetAchieved(slot));
       };
-
-      const currentActiveTab = currentRunState.tabs.find(t => t.name === activeTabName);
-      if (!currentActiveTab || currentActiveTab.slots.filter(s => s.targets.length > 0).length === 0) {
-        alert("목표가 설정된 슬롯이 없습니다.");
-        setIsSimulating(false);
-        return;
-      }
 
       while (!allTargetsAchieved && !stopSignalRef.current) {
         const batchSize = 100;
@@ -527,7 +498,7 @@ function App() {
 
     setIsSimulating(false);
     setIsSimulationFinished(true);
-  }, [gachaState, isProbabilitiesLoaded, isSimulating, isAnimationOn, stopSignalRef]);
+  }, [gachaState, isProbabilitiesLoaded, isSimulating, isAnimationOn, stopSignalRef, hasTargets]);
 
   return (
     <div className="App">
@@ -591,9 +562,27 @@ function App() {
               </button>
               {isSimMenuOpen && (
                 <div className="sim-sub-menu">
-                  <button onClick={() => { handleSingleSimulation(); setIsSimMenuOpen(false); }}>1개 목표 달성</button>
-                  <button onClick={() => { handleFullSimulation(); setIsSimMenuOpen(false); }}>전체 목표 달성</button>
-                  <button onClick={() => { handleStatisticsSimulation(); setIsSimMenuOpen(false); }}>통계 시뮬레이션</button>
+                  <button 
+                    onClick={() => { handleSingleSimulation(); setIsSimMenuOpen(false); }} 
+                    disabled={!canRunSimulation}
+                    data-tooltip={!canRunSimulation ? "목표가 설정되지 않았거나 이미 모든 목표가 달성되었습니다." : ""}
+                  >
+                    1개 목표 달성
+                  </button>
+                  <button 
+                    onClick={() => { handleFullSimulation(); setIsSimMenuOpen(false); }} 
+                    disabled={!canRunSimulation}
+                    data-tooltip={!canRunSimulation ? "목표가 설정되지 않았거나 이미 모든 목표가 달성되었습니다." : ""}
+                  >
+                    전체 목표 달성
+                  </button>
+                  <button 
+                    onClick={() => { handleStatisticsSimulation(); setIsSimMenuOpen(false); }} 
+                    disabled={!hasTargets}
+                    data-tooltip={!hasTargets ? "설정된 목표가 없습니다." : ""}
+                  >
+                    통계 시뮬레이션
+                  </button>
                 </div>
               )}
             </div>

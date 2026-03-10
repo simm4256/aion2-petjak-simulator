@@ -500,6 +500,98 @@ function App() {
     setIsSimulationFinished(true);
   }, [gachaState, isProbabilitiesLoaded, isSimulating, isAnimationOn, stopSignalRef, hasTargets]);
 
+  const handleResidualStatisticsSimulation = useCallback(async () => {
+    if (!isProbabilitiesLoaded || isSimulating || !canRunSimulation) return;
+
+    stopSignalRef.current = false;
+    setIsSimulating(true);
+    setIsSimulationFinished(false);
+    setStatistics(null);
+    setSimulationCount(0);
+
+    const numRuns = 1000;
+    let accumulatedKina = 0;
+    let accumulatedRolls = 0;
+    const accumulatedSoulCrystals: Record<TabName, number> = tabNames.reduce((acc, name) => ({ ...acc, [name]: 0 }), {} as Record<TabName, number>);
+
+    let currentMinRun: { rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null = null;
+    let currentMaxRun: { rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null = null;
+
+    const activeTabName = gachaState.activeTab;
+    const baseStateSnapshot = JSON.parse(JSON.stringify(gachaState)) as GachaState;
+
+    for (let run = 1; run <= numRuns && !stopSignalRef.current; run++) {
+      let currentRunState = JSON.parse(JSON.stringify(baseStateSnapshot)) as GachaState;
+      // Initialize spent amounts for this specific run
+      currentRunState.totalKinaSpent = 0;
+      currentRunState.totalSoulCrystalsSpent = tabNames.reduce((acc, name) => ({ ...acc, [name]: 0 }), {} as Record<TabName, number>);
+
+      let allTargetsAchieved = false;
+      let runRolls = 0;
+
+      const areAllTargetsMet = (tab: Tab): boolean => {
+        const activeTargetedSlots = tab.slots.filter(slot => slot.targets.length > 0);
+        return activeTargetedSlots.length > 0 && activeTargetedSlots.every(slot => checkTargetAchieved(slot));
+      };
+
+      while (!allTargetsAchieved && !stopSignalRef.current) {
+        const batchSize = 100;
+        for (let i = 0; i < batchSize && !allTargetsAchieved && !stopSignalRef.current; i++) {
+          const { newState } = performSingleRoll(currentRunState, activeTabName);
+          currentRunState = newState;
+          runRolls++;
+
+          currentRunState.tabs = currentRunState.tabs.map(tab => {
+            if (tab.name === activeTabName) {
+              const updatedSlots = tab.slots.map(slot => (slot.targets.length > 0 && !slot.isLocked && checkTargetAchieved(slot)) ? { ...slot, isLocked: true } : slot);
+              return { ...tab, slots: updatedSlots };
+            }
+            return tab;
+          });
+          const currentTab = currentRunState.tabs.find(tab => tab.name === activeTabName);
+          if (currentTab) allTargetsAchieved = areAllTargetsMet(currentTab);
+        }
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+
+      if (stopSignalRef.current) break;
+
+      accumulatedKina += currentRunState.totalKinaSpent;
+      accumulatedRolls += runRolls;
+      tabNames.forEach(name => {
+        accumulatedSoulCrystals[name] += currentRunState.totalSoulCrystalsSpent[name];
+      });
+
+      const runResult = {
+        rolls: runRolls,
+        kina: currentRunState.totalKinaSpent,
+        soulCrystals: { ...currentRunState.totalSoulCrystalsSpent }
+      };
+
+      if (!currentMinRun || runRolls < currentMinRun.rolls) currentMinRun = runResult;
+      if (!currentMaxRun || runRolls > currentMaxRun.rolls) currentMaxRun = runResult;
+
+      setStatistics({
+        count: run,
+        totalRolls: accumulatedRolls,
+        minRun: currentMinRun,
+        maxRun: currentMaxRun,
+        avgKina: Math.floor(accumulatedKina / run),
+        avgRolls: Math.floor(accumulatedRolls / run),
+        avgSoulCrystals: tabNames.reduce((acc, name) => ({ 
+          ...acc, 
+          [name]: Math.floor(accumulatedSoulCrystals[name] / run) 
+        }), {} as Record<TabName, number>)
+      });
+
+      setSimulationCount(run);
+      setGachaState(currentRunState);
+    }
+
+    setIsSimulating(false);
+    setIsSimulationFinished(true);
+  }, [gachaState, isProbabilitiesLoaded, isSimulating, stopSignalRef, canRunSimulation]);
+
   return (
     <div className="App">
       <h1>아이온2 펫작 시뮬레이터</h1>
@@ -562,27 +654,10 @@ function App() {
               </button>
               {isSimMenuOpen && (
                 <div className="sim-sub-menu">
-                  <button 
-                    onClick={() => { handleSingleSimulation(); setIsSimMenuOpen(false); }} 
-                    disabled={!canRunSimulation}
-                    data-tooltip={!canRunSimulation ? "목표가 설정되지 않았거나 이미 모든 목표가 달성되었습니다." : ""}
-                  >
-                    1개 목표 달성
-                  </button>
-                  <button 
-                    onClick={() => { handleFullSimulation(); setIsSimMenuOpen(false); }} 
-                    disabled={!canRunSimulation}
-                    data-tooltip={!canRunSimulation ? "목표가 설정되지 않았거나 이미 모든 목표가 달성되었습니다." : ""}
-                  >
-                    전체 목표 달성
-                  </button>
-                  <button 
-                    onClick={() => { handleStatisticsSimulation(); setIsSimMenuOpen(false); }} 
-                    disabled={!hasTargets}
-                    data-tooltip={!hasTargets ? "설정된 목표가 없습니다." : ""}
-                  >
-                    통계 시뮬레이션
-                  </button>
+                  <button onClick={() => { handleSingleSimulation(); setIsSimMenuOpen(false); }} disabled={!canRunSimulation} data-tooltip={!canRunSimulation ? "목표가 설정되지 않았거나 이미 모든 목표가 달성되었습니다." : ""}>단일 목표 달성</button>
+                  <button onClick={() => { handleFullSimulation(); setIsSimMenuOpen(false); }} disabled={!canRunSimulation} data-tooltip={!canRunSimulation ? "목표가 설정되지 않았거나 이미 모든 목표가 달성되었습니다." : ""}>전체 목표 달성</button>
+                  <button onClick={() => { handleStatisticsSimulation(); setIsSimMenuOpen(false); }} disabled={!hasTargets} data-tooltip={!hasTargets ? "설정된 목표가 없습니다." : ""}>통계: 처음부터</button>
+                  <button onClick={() => { handleResidualStatisticsSimulation(); setIsSimMenuOpen(false); }} disabled={!canRunSimulation} data-tooltip={!canRunSimulation ? "목표가 설정되지 않았거나 이미 모든 목표가 달성되었습니다." : ""}>통계: 현재부터</button>
                 </div>
               )}
             </div>

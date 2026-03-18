@@ -45,7 +45,14 @@ function App() {
     avgSoulCrystals: Record<TabName, number>;
     avgKina: number;
     avgRolls: number;
-  } | null>(null); // New state for statistics results
+    progression: {
+      targetCount: number;
+      avgRolls: number;
+      avgKina: number;
+      avgSoulCrystals: Record<TabName, number>;
+    }[];
+  } | null>(null);
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState<boolean>(false);
   const [isAnimationOn, setIsAnimationOn] = useState<boolean>(true);
   const [animationSpeed, setAnimationSpeed] = useState<number>(100);
   const [isProbabilitiesLoaded, setIsProbabilitiesLoaded] = useState(false);
@@ -269,6 +276,17 @@ function App() {
     });
   }, [isProbabilitiesLoaded]);
 
+  const handleResetCosts = useCallback(() => {
+    setGachaState(prevState => ({
+      ...prevState,
+      totalSoulCrystalsSpent: tabNames.reduce((acc, name) => ({ ...acc, [name]: 0 }), {} as Record<TabName, number>),
+      totalKinaSpent: 0
+    }));
+    setSimulationCount(0);
+    setIsSimulationFinished(false);
+    setStatistics(null);
+  }, []);
+
   const handleReset = useCallback(() => {
     setGachaState(prevState => ({
       ...prevState,
@@ -420,6 +438,15 @@ function App() {
     let accumulatedRolls = 0;
     const accumulatedSoulCrystals: Record<TabName, number> = tabNames.reduce((acc, name) => ({ ...acc, [name]: 0 }), {} as Record<TabName, number>);
 
+    // For progression tracking: total costs to reach 1 target, 2 targets, ..., N targets
+    const activeTargetedSlots = gachaState.tabs.find(t => t.name === gachaState.activeTab)?.slots.filter(s => s.targets.length > 0) || [];
+    const numTargets = activeTargetedSlots.length;
+    const accumulatedProgressionRolls = Array(numTargets).fill(0);
+    const accumulatedProgressionKina = Array(numTargets).fill(0);
+    const accumulatedProgressionSoulCrystals = Array(numTargets).fill(null).map(() => 
+      tabNames.reduce((acc, name) => ({ ...acc, [name]: 0 }), {} as Record<TabName, number>)
+    );
+
     let currentMinRun: { runIndex: number; rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null = null;
     let currentMaxRun: { runIndex: number; rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null = null;
 
@@ -436,10 +463,11 @@ function App() {
 
       let allTargetsAchieved = false;
       let runRolls = 0;
+      let targetsReachedInThisRun = 0;
+      const progressionRecorded = Array(numTargets).fill(false);
 
-      const areAllTargetsMet = (tab: Tab): boolean => {
-        const activeTargetedSlots = tab.slots.filter(slot => slot.targets.length > 0);
-        return activeTargetedSlots.length > 0 && activeTargetedSlots.every(slot => checkTargetAchieved(slot));
+      const countTargetsMet = (tab: Tab): number => {
+        return tab.slots.filter(slot => slot.targets.length > 0 && checkTargetAchieved(slot)).length;
       };
 
       while (!allTargetsAchieved && !stopSignalRef.current) {
@@ -457,7 +485,21 @@ function App() {
             return tab;
           });
           const currentTab = currentRunState.tabs.find(tab => tab.name === activeTabName);
-          if (currentTab) allTargetsAchieved = areAllTargetsMet(currentTab);
+          if (currentTab) {
+            targetsReachedInThisRun = countTargetsMet(currentTab);
+            // Record progression for targets 1 to targetsReachedInThisRun
+            for (let t = 1; t <= targetsReachedInThisRun; t++) {
+              if (!progressionRecorded[t-1]) {
+                accumulatedProgressionRolls[t-1] += runRolls;
+                accumulatedProgressionKina[t-1] += currentRunState.totalKinaSpent;
+                tabNames.forEach(name => {
+                  accumulatedProgressionSoulCrystals[t-1][name] += currentRunState.totalSoulCrystalsSpent[name];
+                });
+                progressionRecorded[t-1] = true;
+              }
+            }
+            allTargetsAchieved = targetsReachedInThisRun === numTargets;
+          }
         }
         await new Promise(resolve => setTimeout(resolve, 0));
       }
@@ -490,7 +532,16 @@ function App() {
         avgSoulCrystals: tabNames.reduce((acc, name) => ({ 
           ...acc, 
           [name]: Math.floor(accumulatedSoulCrystals[name] / run) 
-        }), {} as Record<TabName, number>)
+        }), {} as Record<TabName, number>),
+        progression: Array.from({ length: numTargets }, (_, idx) => ({
+          targetCount: idx + 1,
+          avgRolls: Math.floor(accumulatedProgressionRolls[idx] / run),
+          avgKina: Math.floor(accumulatedProgressionKina[idx] / run),
+          avgSoulCrystals: tabNames.reduce((acc, name) => ({
+            ...acc,
+            [name]: Math.floor(accumulatedProgressionSoulCrystals[idx][name] / run)
+          }), {} as Record<TabName, number>)
+        }))
       });
 
       setSimulationCount(run);
@@ -515,6 +566,15 @@ function App() {
     let accumulatedRolls = 0;
     const accumulatedSoulCrystals: Record<TabName, number> = tabNames.reduce((acc, name) => ({ ...acc, [name]: 0 }), {} as Record<TabName, number>);
 
+    // For progression tracking
+    const activeTargetedSlots = gachaState.tabs.find(t => t.name === gachaState.activeTab)?.slots.filter(s => s.targets.length > 0) || [];
+    const numTargets = activeTargetedSlots.length;
+    const accumulatedProgressionRolls = Array(numTargets).fill(0);
+    const accumulatedProgressionKina = Array(numTargets).fill(0);
+    const accumulatedProgressionSoulCrystals = Array(numTargets).fill(null).map(() => 
+      tabNames.reduce((acc, name) => ({ ...acc, [name]: 0 }), {} as Record<TabName, number>)
+    );
+
     let currentMinRun: { runIndex: number; rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null = null;
     let currentMaxRun: { runIndex: number; rolls: number; kina: number; soulCrystals: Record<TabName, number> } | null = null;
 
@@ -529,11 +589,16 @@ function App() {
 
       let allTargetsAchieved = false;
       let runRolls = 0;
+      let targetsReachedInThisRun = 0;
 
-      const areAllTargetsMet = (tab: Tab): boolean => {
-        const activeTargetedSlots = tab.slots.filter(slot => slot.targets.length > 0);
-        return activeTargetedSlots.length > 0 && activeTargetedSlots.every(slot => checkTargetAchieved(slot));
+      const countTargetsMet = (tab: Tab): number => {
+        return tab.slots.filter(slot => slot.targets.length > 0 && checkTargetAchieved(slot)).length;
       };
+      
+      const initialTargetsMet = countTargetsMet(currentRunState.tabs.find(t => t.name === activeTabName)!);
+      const progressionRecorded = Array(numTargets).fill(false);
+      // Mark already achieved targets as recorded
+      for (let i = 0; i < initialTargetsMet; i++) progressionRecorded[i] = true;
 
       while (!allTargetsAchieved && !stopSignalRef.current) {
         const batchSize = 100;
@@ -550,7 +615,20 @@ function App() {
             return tab;
           });
           const currentTab = currentRunState.tabs.find(tab => tab.name === activeTabName);
-          if (currentTab) allTargetsAchieved = areAllTargetsMet(currentTab);
+          if (currentTab) {
+            targetsReachedInThisRun = countTargetsMet(currentTab);
+            for (let t = 1; t <= targetsReachedInThisRun; t++) {
+              if (!progressionRecorded[t-1]) {
+                accumulatedProgressionRolls[t-1] += runRolls;
+                accumulatedProgressionKina[t-1] += currentRunState.totalKinaSpent;
+                tabNames.forEach(name => {
+                  accumulatedProgressionSoulCrystals[t-1][name] += currentRunState.totalSoulCrystalsSpent[name];
+                });
+                progressionRecorded[t-1] = true;
+              }
+            }
+            allTargetsAchieved = targetsReachedInThisRun === numTargets;
+          }
         }
         await new Promise(resolve => setTimeout(resolve, 0));
       }
@@ -583,7 +661,16 @@ function App() {
         avgSoulCrystals: tabNames.reduce((acc, name) => ({ 
           ...acc, 
           [name]: Math.floor(accumulatedSoulCrystals[name] / run) 
-        }), {} as Record<TabName, number>)
+        }), {} as Record<TabName, number>),
+        progression: Array.from({ length: numTargets }, (_, idx) => ({
+          targetCount: idx + 1,
+          avgRolls: Math.floor(accumulatedProgressionRolls[idx] / run),
+          avgKina: Math.floor(accumulatedProgressionKina[idx] / run),
+          avgSoulCrystals: tabNames.reduce((acc, name) => ({
+            ...acc,
+            [name]: Math.floor(accumulatedProgressionSoulCrystals[idx][name] / run)
+          }), {} as Record<TabName, number>)
+        }))
       });
 
       setSimulationCount(run);
@@ -663,6 +750,7 @@ function App() {
                 </div>
               )}
             </div>
+            <button onClick={handleResetCosts} disabled={isSimulating}>재화 리셋</button>
             <button onClick={handleReset} disabled={isSimulating}>전체 리셋</button>
             {isSimulating && !statistics && (
               <div className="simulation-info">
@@ -701,37 +789,10 @@ function App() {
                       <p><img src="images/kina.png" alt="Kina" className="cost-image" /> {statistics.avgKina.toLocaleString()}</p>
                     </div>
                   </div>
-                  {statistics.minRun && (
-                    <div className="stat-item highlight">
-                      <span className="stat-header">최소 소모 ({statistics.minRun.runIndex}회차)</span>
-                      <div className="stat-values">
-                        {tabNames.map(name => (
-                          statistics.minRun!.soulCrystals[name as TabName] > 0 && (
-                            <p key={name}>
-                              <img src={({ '지성': 'images/crystal_blue.png', '특수': 'images/crystal_sky.png', '야성': 'images/crystal_red.png', '자연': 'images/crystal_green.png', '변형': 'images/crystal_yellow.png' } as Record<string, string>)[name]} alt={name} className="cost-image" /> {statistics.minRun!.soulCrystals[name as TabName].toLocaleString()}
-                            </p>
-                          )
-                        ))}
-                        <p><img src="images/kina.png" alt="Kina" className="cost-image" /> {statistics.minRun.kina.toLocaleString()}</p>
-                      </div>
-                    </div>
-                  )}
-                  {statistics.maxRun && (
-                    <div className="stat-item highlight">
-                      <span className="stat-header">최대 소모 ({statistics.maxRun.runIndex}회차)</span>
-                      <div className="stat-values">
-                        {tabNames.map(name => (
-                          statistics.maxRun!.soulCrystals[name as TabName] > 0 && (
-                            <p key={name}>
-                              <img src={({ '지성': 'images/crystal_blue.png', '특수': 'images/crystal_sky.png', '야성': 'images/crystal_red.png', '자연': 'images/crystal_green.png', '변형': 'images/crystal_yellow.png' } as Record<string, string>)[name]} alt={name} className="cost-image" /> {statistics.maxRun!.soulCrystals[name as TabName].toLocaleString()}
-                            </p>
-                          )
-                        ))}
-                        <p><img src="images/kina.png" alt="Kina" className="cost-image" /> {statistics.maxRun.kina.toLocaleString()}</p>
-                      </div>
-                    </div>
-                  )}
                 </div>
+                {!isSimulating && (
+                  <button className="view-details-button" onClick={() => setIsStatsModalOpen(true)}>자세히 보기</button>
+                )}
               </div>
             ) : (
               <div className="costs-summary">
@@ -870,6 +931,82 @@ function App() {
               </div>
             </div>
             <div className="modal-controls"><button onClick={handleCancel}>닫기</button></div>
+          </div>
+        </div>
+      )}
+
+      {isStatsModalOpen && statistics && (
+        <div className="modal-overlay" onClick={() => setIsStatsModalOpen(false)}>
+          <div className="modal-content stats-detail-modal" onClick={e => e.stopPropagation()}>
+            <h3>상세 통계 ({statistics.count}회 분석 결과)</h3>
+            
+            <div className="stats-scroll-area">
+              <div className="settings-section">
+                <h4>최소 / 최대 소모량</h4>
+                <div className="stat-grid detail-grid">
+                  {statistics.minRun && (
+                    <div className="stat-item highlight">
+                      <span className="stat-header">최소 소모 ({statistics.minRun.runIndex}회차)</span>
+                      <div className="stat-values">
+                        <p className="rolls-count">분석: {statistics.minRun.rolls.toLocaleString()}회</p>
+                        {tabNames.map(name => (
+                          statistics.minRun!.soulCrystals[name as TabName] > 0 && (
+                            <p key={name}>
+                              <img src={({ '지성': 'images/crystal_blue.png', '특수': 'images/crystal_sky.png', '야성': 'images/crystal_red.png', '자연': 'images/crystal_green.png', '변형': 'images/crystal_yellow.png' } as Record<string, string>)[name]} alt={name} className="cost-image" /> {statistics.minRun!.soulCrystals[name as TabName].toLocaleString()}
+                            </p>
+                          )
+                        ))}
+                        <p><img src="images/kina.png" alt="Kina" className="cost-image" /> {statistics.minRun.kina.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  )}
+                  {statistics.maxRun && (
+                    <div className="stat-item highlight">
+                      <span className="stat-header">최대 소모 ({statistics.maxRun.runIndex}회차)</span>
+                      <div className="stat-values">
+                        <p className="rolls-count">분석: {statistics.maxRun.rolls.toLocaleString()}회</p>
+                        {tabNames.map(name => (
+                          statistics.maxRun!.soulCrystals[name as TabName] > 0 && (
+                            <p key={name}>
+                              <img src={({ '지성': 'images/crystal_blue.png', '특수': 'images/crystal_sky.png', '야성': 'images/crystal_red.png', '자연': 'images/crystal_green.png', '변형': 'images/crystal_yellow.png' } as Record<string, string>)[name]} alt={name} className="cost-image" /> {statistics.maxRun!.soulCrystals[name as TabName].toLocaleString()}
+                            </p>
+                          )
+                        ))}
+                        <p><img src="images/kina.png" alt="Kina" className="cost-image" /> {statistics.maxRun.kina.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {statistics.progression && statistics.progression.length > 0 && (
+                <div className="settings-section">
+                  <h4>목표 달성 개수별 평균 소모량</h4>
+                  <div className="progression-list compact">
+                    {statistics.progression.map((p, idx) => (
+                      <div key={idx} className="progression-line">
+                        <span className="progression-label">{p.targetCount}개</span>
+                        <span className="progression-rolls">평균 분석: {p.avgRolls.toLocaleString()}회</span>
+                        <div className="progression-costs-inline">
+                          {tabNames.map(name => (
+                            p.avgSoulCrystals[name] > 0 && (
+                              <span key={name} className="cost-unit">
+                                <img src={({ '지성': 'images/crystal_blue.png', '특수': 'images/crystal_sky.png', '야성': 'images/crystal_red.png', '자연': 'images/crystal_green.png', '변형': 'images/crystal_yellow.png' } as Record<string, string>)[name]} alt={name} className="cost-image-small" /> {p.avgSoulCrystals[name].toLocaleString()}
+                              </span>
+                            )
+                          ))}
+                          <span className="cost-unit"><img src="images/kina.png" alt="Kina" className="cost-image-small" /> {p.avgKina.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-controls">
+              <button onClick={() => setIsStatsModalOpen(false)}>닫기</button>
+            </div>
           </div>
         </div>
       )}

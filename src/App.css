@@ -490,7 +490,10 @@ select:not([class*="grade-"]) {
   margin-top: 20px;
   width: 100%;
   box-sizing: border-box;
-  text-align: left;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .statistics-results h3 {
@@ -704,8 +707,120 @@ select:not([class*="grade-"]) {
   flex: 1;
 }
 
-.confirm-button {
-  background-color: #61dafb !important;
-  color: #282c34 !important;
+.view-details-button {
+  background-color: #444 !important;
+  color: #61dafb !important;
+  border: 1px solid #61dafb !important;
+  padding: 8px 15px !important;
+  font-size: 0.9em !important;
+  margin-top: 10px;
+  width: auto !important;
+}
+
+.view-details-button:hover {
+  background-color: #555 !important;
+}
+
+.stats-detail-modal {
+  width: 500px !important;
+  max-width: 95% !important;
+}
+
+.stats-scroll-area {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 10px;
+  margin-bottom: 20px;
+}
+
+/* Scrollbar styling */
+.stats-scroll-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.stats-scroll-area::-webkit-scrollbar-track {
+  background: #222;
+  border-radius: 4px;
+}
+
+.stats-scroll-area::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+.stats-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+.detail-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+.rolls-count {
+  color: #61dafb;
+  font-size: 0.85em !important;
+  border-bottom: 1px dashed #444;
+  padding-bottom: 5px;
+  margin-bottom: 5px !important;
+}
+
+.progression-list.compact {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.progression-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px;
+  background-color: #333;
+  border-radius: 4px;
+  font-size: 0.85em;
+  border-left: 3px solid #61dafb;
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
+.progression-label {
   font-weight: bold;
+  color: #61dafb;
+  min-width: 30px;
+}
+
+.progression-rolls {
+  color: #ccc;
+  margin-right: 5px;
+}
+
+.progression-costs-inline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.cost-unit {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.cost-image-small {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 600px) {
+  .progression-line {
+    flex-wrap: wrap;
+    gap: 5px;
+    height: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
 }
